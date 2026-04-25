@@ -202,9 +202,9 @@ def producto_poco_stock():
         {
             "id":datos[0],
             "nombre":datos[1],
-            "precio": datos[2],
-            "stock": datos[3],
-            "categoria_id":datos[4]
+            "precio":float(datos[2]),
+            "stock":datos[3],
+            "categoria":datos[4]
         }
     )
     cursor.close()
