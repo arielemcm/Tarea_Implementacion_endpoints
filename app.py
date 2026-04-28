@@ -1,4 +1,4 @@
-from flask import Flask,jsonify,render_template
+from flask import Flask,jsonify,render_template,request
 from flask_mysqldb import MySQL
 
 app = Flask(__name__)
@@ -8,7 +8,7 @@ app.config['MYSQL_HOST']="localhost"
 app.config['MYSQL_USER']="root"
 app.config['MYSQL_PASSWORD']=""
 app.config['MYSQL_DB']="tienda_db"
-
+#============================TEST================================
 @app.route('/testdb')
 def test():
     cursor = mysql.connection.cursor()
@@ -19,6 +19,10 @@ def test():
 # @app.route('/')
 # def inicio():
 #     return "Servidor flask en ejecucion"
+
+#ENDPOINT GET/productos
+
+#============================CATEGORIAS================================
 
 #ENDPOINT GET /categoria
 @app.route('/categorias',methods=['GET'])
@@ -32,7 +36,111 @@ def listar_categorias():
         categorias.append({"id": fila[0], "nombre": fila[1]})
     cursor.close()
     return jsonify(categorias)
+#ENDPOINT GET /categorias/<id>
+@app.route('/categoria/<int:id>',methods=['GET'])
+def categoria_id(id):
+    cursor = mysql.connection.cursor()
+    sql ="""
+            SELECT id,nombre
+            FROM categoria
+            WHERE id = %s
+        """
+    cursor.execute(sql,(id,))
+    datos = cursor.fetchone()
+    if datos is None:
+        msg = {
+            "mensage": "No existe la categoria!"
+        }
+        return jsonify(msg)
+    categorias=[]
+    categorias.append(
+        {
+            "id":datos[0],
+            "nombre":datos[1]
+        }
+    )
+    cursor.close()
+    return jsonify(categorias)
+#ENDPOINT POST/categorias ---- para crear una categoria en la tabla categoria--despues de producto categoria
+@app.route('/categorias',methods=['POST'])
+def insertar_categoria():
+    #recuperando los datos en formato json
+    data = request.get_json()
+    nombre = data["nombre"]
 
+    #insertar en la tabla categoria
+    cursor = mysql.connection.cursor()
+    sql ="""
+        INSERT INTO categoria (nombre)
+        VALUES (%s)
+        """
+    cursor.execute(sql,(nombre,))
+    mysql.connection.commit() #commit sirve para confirma la insercion del valor
+    cursor.close()
+    return jsonify({"Mensaje": "Categoria registrada con exito"}),200
+#PUT: modificar categoria
+@app.route('/categorias/<int:id>',methods=['PUT'])
+def modificar_categoria(id):
+    data = request.get_json()
+    nombre = data['nombre']
+    cursor = mysql.connection.cursor()
+    sql="""
+        UPDATE categoria
+        SET nombre = %s
+        WHERE id = %s
+        """
+    cursor.execute(sql,(nombre,id,))
+    mysql.connection.commit()
+    cursor.close()
+    return jsonify({"mensaje":"Categoria modificada"}),200
+
+#ENDPOINT DELETE
+@app.route('/categoria/<int:id>', methods=['DELETE'])
+def eliminar_categoria(id):
+    cursor = mysql.connection.cursor()
+    sql = """
+        SELECT id, nombre
+        FROM categoria WHERE id = %s
+        """
+    cursor.execute(sql, (id,))
+    datos = cursor.fetchone()
+    if datos is None:
+        cursor.close()
+        return jsonify({"mensaje": "La categoria no existe"}), 404
+    sql = """
+        DELETE FROM categoria
+        WHERE id = %s
+        """
+    cursor.execute(sql, (id,))
+    mysql.connection.commit()
+    cursor.close()
+    return jsonify({"mensaje": "Categoria eliminada"}), 200
+
+#============================PRODCUTOS================================
+
+#ENDPOINT GET /productos
+@app.route('/productos',methods=['GET'])
+def listar_productos():
+    cursor = mysql.connection.cursor()
+    sql = """
+        SELECT id,nombre,precio,stock,categoria_id
+        FROM producto
+        """
+    cursor.execute(sql)
+    datos=cursor.fetchall()
+    productos =[]
+    for fila in datos:
+        productos.append(
+            {
+                "id":fila[0],
+                "nombre":fila[1],
+                "precio":float(fila[2]),
+                "stock":fila[3],
+                "categoria_id":fila[4]
+            }
+        )
+    cursor.close()
+    return jsonify(productos)
 #ENDPOINT GET /productos/<id>
 @app.route('/productos/<int:id>',methods=['GET'])
 def producto_id(id):
@@ -59,55 +167,73 @@ def producto_id(id):
     )
     cursor.close()
     return jsonify(productos)
-
-#ENDPOINT GET /categorias/<id>
-@app.route('/categorias/<int:id>',methods=['GET'])
-def categoria_id(id):
+#POST/productos crear
+@app.route('/productos',methods=['POST'])
+def insertar_producto():
+    #rec datos
+    data = request.get_json()
+    nombre = data["nombre"]
+    precio = float(data ["precio"])
+    stock = int(data["stock"])
+    categoria_id= int(data["categoria_id"])
     cursor = mysql.connection.cursor()
-    sql ="""
-            SELECT id,nombre
-            FROM categoria
-            WHERE id = %s
+    sql = """
+        INSERT INTO producto(nombre,precio,stock,categoria_id)
+        VALUES (%s,%s,%s,%s)
         """
-    cursor.execute(sql,(id,))
-    datos = cursor.fetchone()
-    if datos is None:
-        msg = {
-            "mensage": "No existe la categoria!"
-        }
-        return jsonify(msg)
-    categorias=[]
-    categorias.append(
-        {
-            "id":datos[0],
-            "nombre":datos[1]
-        }
-    )
+    cursor.execute(sql,(nombre,precio,stock,categoria_id,))
+    mysql.connection.commit()
     cursor.close()
-    return jsonify(categorias)
-#ENDPOINT GET/productos
-@app.route('/productos',methods=['GET'])
-def listar_productos():
+    return jsonify({"mensaje":"Producto agregado correctamente"}),201
+
+# PUT: para productos
+@app.route('/productos/<int:id>', methods=['PUT'])
+def actualizar_producto(id):
+
+    data = request.get_json()
+
+    nombre = data['nombre']
+    precio = float(data['precio'])
+    stock = int(data['stock'])
+    categoria_id = int(data['categoria_id'])
+
+    cursor = mysql.connection.cursor()
+    sql = """ UPDATE producto
+        SET nombre = %s,  precio = %s,  stock = %s,categoria_id = %s
+        WHERE id = %s
+        """
+
+    cursor.execute(sql, (nombre, precio, stock, categoria_id , id,))
+
+    mysql.connection.commit()
+    cursor.close()
+    return jsonify({"mensaje": "Producto actualizado correctamente"}), 200
+
+#ENDPOINT DELETE/prodcuto/id
+@app.route('/productos/<int:id>', methods=['DELETE'])
+def eliminar_prodcuto(id):
     cursor = mysql.connection.cursor()
     sql = """
         SELECT id,nombre,precio,stock,categoria_id
         FROM producto
+        WHERE id = %s
         """
-    cursor.execute(sql)
-    datos=cursor.fetchall()
-    productos =[]
-    for fila in datos:
-        productos.append(
-            {
-                "id":fila[0],
-                "nombre":fila[1],
-                "precio":float(fila[2]),
-                "stock":fila[3],
-                "categoria_id":fila[4]
-            }
-        )
+    cursor.execute(sql, (id,))
+    datos = cursor.fetchone()
+    if datos is None:
+        cursor.close()
+        return jsonify({"mensaje": "El producto no existe"}),404
+    sql = """
+        DELETE FROM producto
+        WHERE id = %s
+        """
+    cursor.execute(sql, (id,))
+    mysql.connection.commit()
     cursor.close()
-    return jsonify(productos)
+    return jsonify({"mensaje": "Producto eliminado"}),200
+
+#============================EJERCICIOS CON PRODUCTOS================================
+
 #ENDPOINT GET/productos_categoriasada
 @app.route('/productos_categoria',methods=['GET'])
 def productos_con_categoria():
@@ -159,10 +285,6 @@ def productos_por_categoria(id):
         )
     cursor.close()
     return jsonify(productos)
-#conexion con html
-@app.route('/')
-def inicio():
-    return render_template("index.html")
 #ENDOPOINT GET/producto_mas_caro
 @app.route('/producto_mas_caro',methods=['GET'])
 def productos_mas_caro():
@@ -232,6 +354,26 @@ def cantidad_producto_categoria():
         )
     cursor.close()
     return jsonify(productos)
+#ENDPOINT DELETE
+# @app.route('/categoria/<int:id>',methods=['DELETE'])
+# def elimar_categoria(id):
+#     cursor = mysql.connection.cursor()
+#     sql = """
+#         DELETE FROM categoria
+#         WHERE id = %s
+#         """
+#     cursor.execute(sql,(id,))
+#     mysql.connection.commit()
+#     cursor.close()
+#     return jsonify({"mensaje":"Categoria eliminada"}),200
+
+#============================CONEXION CON HTML================================
+
+#conexion con html
+@app.route('/')
+def inicio():
+    return render_template("index.html")
+
 if __name__ == '__main__':
     app.run(debug=True)
 
