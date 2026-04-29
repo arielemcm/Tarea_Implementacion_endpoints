@@ -98,7 +98,7 @@ def modificar_categoria(id):
     return jsonify({"mensaje":"Categoria modificada"}),200
 
 #ENDPOINT DELETE
-@app.route('/categorias/<int:id>', methods=['DELETE'])
+@app.route('/categoria/<int:id>', methods=['DELETE'])
 def eliminar_categoria(id):
     cursor = mysql.connection.cursor()
     sql = """
