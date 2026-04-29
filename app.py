@@ -28,7 +28,10 @@ def test():
 @app.route('/categorias',methods=['GET'])
 def listar_categorias():
     cursor = mysql.connection.cursor()
-    sql = "SELECT id,nombre FROM categoria"
+    sql = """
+        SELECT id,nombre
+        FROM categoria
+        """
     cursor.execute(sql)
     datos= cursor.fetchall()
     categorias=[]
