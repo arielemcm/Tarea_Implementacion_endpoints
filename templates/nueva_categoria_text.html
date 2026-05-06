@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h3>Para Categoria</h3>
+    <input type="text" id="nombre" placeholder="Nombre de categoría"><br>
+    <button onclick="enviar()">Enviar Categoria</button><br>
+    <h3>Para Producto</h3>
+    <input type="text" id="nombreProd" placeholder="Nombre de Producto"><br>
+    <input type="number" id="precio" placeholder="Precio Producto"><br>
+    <input type="number" id="stock" placeholder="Stock Producto"><br>
+    <input type="number" id="categoria_id" placeholder="Categoria ID"><br>
+    <button onclick="enviarC()">Enviar Producto</button>
+    <div id="mensaje"></div>
+
+    <script>
+        function enviarC(){
+            const producto = {
+                nombre: document.getElementById('nombreProd').value,
+                precio: parseFloat(document.getElementById('precio').value),
+                stock: parseInt(document.getElementById('stock').value),
+                categoria_id: parseInt(document.getElementById('categoria_id').value)
+            };
+            fetch('/productos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(producto)
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('mensaje').textContent = data.mensaje;
+            });
+        }
+
+        function enviar(){
+            const categoria={
+                nombre: document.getElementById('nombre').value,
+            };
+            fetch('/categorias',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify(categoria)
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('mensaje').textContent= data.mensaje;
+            });
+        }
+    </script>
+</body>
+</html>

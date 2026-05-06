@@ -1,13 +1,29 @@
 from flask import Flask,jsonify,render_template,request
 from flask_mysqldb import MySQL
+from flask_jwt_extended import JWTManager,create_access_token,jwt_required
 
 app = Flask(__name__)
 mysql = MySQL(app)
-#conexion a la BD tienda_db en mysql
+#conexion a la BD tienda_db en mysql======
 app.config['MYSQL_HOST']="localhost"
 app.config['MYSQL_USER']="root"
 app.config['MYSQL_PASSWORD']=""
 app.config['MYSQL_DB']="tienda_db"
+#configurarndo JWT =======================
+app.config['JWT_SECRET_KEY'] = '123'
+jwt = JWTManager(app)
+#============================CON JWWT /LOGIN================================
+#ENDPOINT POST /login
+@app.route('/login',methods=['POST'])
+def login():
+    data = request.get_json()
+    username=data['username']
+    password=data['password']
+    if username == 'admin' and password == '123':
+        token = create_access_token(identity=username)
+        return jsonify(access_token=token)
+    return jsonify({"error" : "Credenciales incorrectos"}),401
+
 #============================TEST================================
 @app.route('/testdb')
 def test():
@@ -16,9 +32,9 @@ def test():
     cursor.execute(sql)
     return "Conexion exitosa"
 
-# @app.route('/')
-# def inicio():
-#     return "Servidor flask en ejecucion"
+@app.route('/')
+def inicio():
+    return "Servidor flask en ejecucion"
 
 #ENDPOINT GET/productos
 
@@ -26,6 +42,7 @@ def test():
 
 #ENDPOINT GET /categoria
 @app.route('/categorias',methods=['GET'])
+@jwt_required()
 def listar_categorias():
     cursor = mysql.connection.cursor()
     sql = """
@@ -64,59 +81,77 @@ def categoria_id(id):
     )
     cursor.close()
     return jsonify(categorias)
-#ENDPOINT POST/categorias ---- para crear una categoria en la tabla categoria--despues de producto categoria
-@app.route('/categorias',methods=['POST'])
-def insertar_categoria():
-    #recuperando los datos en formato json
-    data = request.get_json()
-    nombre = data["nombre"]
 
-    #insertar en la tabla categoria
-    cursor = mysql.connection.cursor()
-    sql ="""
-        INSERT INTO categoria (nombre)
-        VALUES (%s)
-        """
-    cursor.execute(sql,(nombre,))
-    mysql.connection.commit() #commit sirve para confirma la insercion del valor
-    cursor.close()
-    return jsonify({"Mensaje": "Categoria registrada con exito"}),200
+#ENDPOINT POST/categorias ---- para crear una categoria en la tabla categoria--despues de producto categoria
+
+@app.route('/categorias',methods=['POST'])
+@jwt_required()
+def insertar_categoria():
+    # token = request.headers.get('Authorization')
+    # if token != 'Bearer 13052935':
+    #     return jsonify({"error" : "No esta autorizado"}),401
+
+    return jsonify({"mensaje": "Categoria registrada con exito"}),200
+    # #recuperando los datos en formato json
+    # data = request.get_json()
+    # nombre = data["nombre"]
+    # #insertar en la tabla categoria
+    # cursor = mysql.connection.cursor()
+    # sql ="""
+    #     INSERT INTO categoria (nombre)
+    #     VALUES (%s)
+    #     """
+    # cursor.execute(sql,(nombre,))
+    # mysql.connection.commit() #commit sirve para confirma la insercion del valor
+    # cursor.close()
+    # return jsonify({"mensaje": "Categoria registrada con exito"}),200
+
 #PUT: modificar categoria
 @app.route('/categorias/<int:id>',methods=['PUT'])
+@jwt_required()
+
 def modificar_categoria(id):
-    data = request.get_json()
-    nombre = data['nombre']
-    cursor = mysql.connection.cursor()
-    sql="""
-        UPDATE categoria
-        SET nombre = %s
-        WHERE id = %s
-        """
-    cursor.execute(sql,(nombre,id,))
-    mysql.connection.commit()
-    cursor.close()
+    
+    token = request.headers.get('Authorization')
+    if token != 'Bearer 13052935':
+        return jsonify({"error" : "No esta autorizado"}),401
+    # data = request.get_json()
+    # nombre = data['nombre']
+    # cursor = mysql.connection.cursor()
+    # sql="""
+    #     UPDATE categoria
+    #     SET nombre = %s
+    #     WHERE id = %s
+    #     """
+    # cursor.execute(sql,(nombre,id,))
+    # mysql.connection.commit()
+    # cursor.close()
     return jsonify({"mensaje":"Categoria modificada"}),200
 
 #ENDPOINT DELETE
-@app.route('/categoria/<int:id>', methods=['DELETE'])
+@app.route('/categorias/<int:id>', methods=['DELETE'])
+@jwt_required()
 def eliminar_categoria(id):
-    cursor = mysql.connection.cursor()
-    sql = """
-        SELECT id, nombre
-        FROM categoria WHERE id = %s
-        """
-    cursor.execute(sql, (id,))
-    datos = cursor.fetchone()
-    if datos is None:
-        cursor.close()
-        return jsonify({"mensaje": "La categoria no existe"}), 404
-    sql = """
-        DELETE FROM categoria
-        WHERE id = %s
-        """
-    cursor.execute(sql, (id,))
-    mysql.connection.commit()
-    cursor.close()
+    token = request.headers.get('Authorization')
+    if token != 'Bearer 13052935':
+        return jsonify({"error" : "No esta autorizado"}),401
+    # cursor = mysql.connection.cursor()
+    # sql = """
+    #     SELECT id, nombre
+    #     FROM categoria WHERE id = %s
+    #     """
+    # cursor.execute(sql, (id,))
+    # datos = cursor.fetchone()
+    # if datos is None:
+    #     cursor.close()
+    #     return jsonify({"mensaje": "La categoria no existe"}), 404
+    # sql = """
+    #     DELETE FROM categoria
+    #     WHERE id = %s
+    #     """
+    # cursor.execute(sql, (id,))
+    # mysql.connection.commit()
+    # cursor.close()
     return jsonify({"mensaje": "Categoria eliminada"}), 200
 
 #============================PRODCUTOS================================
@@ -172,7 +207,11 @@ def producto_id(id):
     return jsonify(productos)
 #POST/productos crear
 @app.route('/productos',methods=['POST'])
+@jwt_required()
 def insertar_producto():
+    # token = request.headers.get('Authorization')
+    # if token != 'Bearer 13052935':
+    #     return jsonify({"error" : "No esta autorizado"}),401
     #rec datos
     data = request.get_json()
     nombre = data["nombre"]
@@ -187,52 +226,61 @@ def insertar_producto():
     cursor.execute(sql,(nombre,precio,stock,categoria_id,))
     mysql.connection.commit()
     cursor.close()
-    return jsonify({"mensaje":"Producto agregado correctamente"}),201
+    return jsonify({"mensaje":"Producto agregado correctamente -- 76. Macuchapi M. Ariel E."}),201
 
 # PUT: para productos
-@app.route('/productos/<int:id>', methods=['PUT'])
+@app.route('/producto/<int:id>', methods=['PUT'])
+@jwt_required()
 def actualizar_producto(id):
+    # token = request.headers.get('Authorization')
+    # if token != 'Bearer 13052935':
+    #     return jsonify({"error" : "No esta autorizado"}),401
 
-    data = request.get_json()
+    # data = request.get_json()
 
-    nombre = data['nombre']
-    precio = float(data['precio'])
-    stock = int(data['stock'])
-    categoria_id = int(data['categoria_id'])
+    # nombre = data['nombre']
+    # precio = float(data['precio'])
+    # stock = int(data['stock'])
+    # categoria_id = int(data['categoria_id'])
 
-    cursor = mysql.connection.cursor()
-    sql = """ UPDATE producto
-        SET nombre = %s,  precio = %s,  stock = %s,categoria_id = %s
-        WHERE id = %s
-        """
+    # cursor = mysql.connection.cursor()
+    # sql = """ UPDATE producto
+    #     SET nombre = %s,  precio = %s,  stock = %s,categoria_id = %s
+    #     WHERE id = %s
+    #     """
 
-    cursor.execute(sql, (nombre, precio, stock, categoria_id , id,))
+    # cursor.execute(sql, (nombre, precio, stock, categoria_id , id,))
 
-    mysql.connection.commit()
-    cursor.close()
+    # mysql.connection.commit()
+    # cursor.close()
     return jsonify({"mensaje": "Producto actualizado correctamente"}), 200
 
 #ENDPOINT DELETE/prodcuto/id
-@app.route('/productos/<int:id>', methods=['DELETE'])
+@app.route('/producto/<int:id>', methods=['DELETE'])
+@jwt_required()
 def eliminar_prodcuto(id):
-    cursor = mysql.connection.cursor()
-    sql = """
-        SELECT id,nombre,precio,stock,categoria_id
-        FROM producto
-        WHERE id = %s
-        """
-    cursor.execute(sql, (id,))
-    datos = cursor.fetchone()
-    if datos is None:
-        cursor.close()
-        return jsonify({"mensaje": "El producto no existe"}),404
-    sql = """
-        DELETE FROM producto
-        WHERE id = %s
-        """
-    cursor.execute(sql, (id,))
-    mysql.connection.commit()
-    cursor.close()
+    # token = request.headers.get('Authorization')
+    # if token != 'Bearer 13052935':
+    #     return jsonify({"error" : "No esta autorizado"}),401
+
+    # cursor = mysql.connection.cursor()
+    # sql = """
+    #     SELECT id,nombre,precio,stock,categoria_id
+    #     FROM producto
+    #     WHERE id = %s
+    #     """
+    # cursor.execute(sql, (id,))
+    # datos = cursor.fetchone()
+    # if datos is None:
+    #     cursor.close()
+    #     return jsonify({"mensaje": "El producto no existe"}),404
+    # sql = """
+    #     DELETE FROM producto
+    #     WHERE id = %s
+    #     """
+    # cursor.execute(sql, (id,))
+    # mysql.connection.commit()
+    # cursor.close()
     return jsonify({"mensaje": "Producto eliminado"}),200
 
 #============================EJERCICIOS CON PRODUCTOS================================
@@ -373,9 +421,21 @@ def cantidad_producto_categoria():
 #============================CONEXION CON HTML================================
 
 #conexion con html
-@app.route('/')
-def inicio():
-    return render_template("index.html")
+# @app.route('/')
+# def inicio():
+#     return render_template("index.html")
+
+# @app.route('/')
+# def inicio():
+#     return render_template("nueva_categoria.html")
+
+# @app.route('/')
+# def inicio():
+#     return render_template("nueva_categoria_text.html")
+
+# @app.route('/')
+# def del_up():
+#     return render_template("del_up.html")
 
 if __name__ == '__main__':
     app.run(debug=True)

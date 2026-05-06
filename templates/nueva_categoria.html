@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <button onclick="enviar()">Registrar Categoria</button>
+    <button onclick="registrar()">Registrar Producto</button>
+    <!--mostrar respuesta del backend-->
+    <p id="mensaje"></p>
+    <!--.then captura los datos del backend-->
+    <!--Enviar un json en fetch
+        y revisar el do en js
+    -->
+    <script>
+        function registrar(){
+            const producto={
+                nombre: 'PacMouse',
+                precio : '50',
+                stock : '45',
+                categoria_id:'2'
+            };
+            fetch('/productos',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify(producto)
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('mensaje').textContent= data.mensaje;
+            });
+        }
+        function enviar(){
+            const categoria={
+                nombre: 'categoria prueba'
+            };
+            fetch('/categorias',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify(categoria)
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('mensaje').textContent= data.mensaje;
+            });
+        }
+
+    </script>
+</body>
+</html>
